@@ -1,11 +1,11 @@
 #include <EEPROM.h>
 #include <ESP8266WiFi.h>
 #include <ESPAsyncWebServer.h>
+#include <WebSocketsClient.h>
 #include <Servo.h>
-
 // Серво
 Servo servo;
-const int servoPin = 5; // Сервопривод
+const int servoPin = 5; // Пин сервопривода
 
 // Начальный вайфай
 const char* ssidAP = "AutoFeederSetup";
@@ -15,9 +15,17 @@ String wifiSSID = "";
 String wifiPassword = "";
 
 AsyncWebServer server(80);
+WebSocketsClient webSocket;
 
-unsigned long feedingInterval = 3600000; // Интервал между кормлениями (в миллисекундах)
+unsigned long feedingInterval = 3600000; // в миллисекундах
 unsigned long lastFeedingTime = 0;
+
+const char* serverHost = "192.168.31.172";
+const int serverPort = 5000;
+const char* deviceID = "feeder_001";
+
+unsigned long lastPingTime = 0;
+unsigned long pingInterval = 30000; // Интервал пинга
 
 
 void feedAnimal() {
@@ -32,11 +40,11 @@ void saveWiFiCredentials(const String& ssid, const String& password) {
   for (size_t i = 0; i < ssid.length(); i++) {
     EEPROM.write(i, ssid[i]);
   }
-  EEPROM.write(ssid.length(), '\0'); // Конец строки
+  EEPROM.write(ssid.length(), '\0');
   for (size_t i = 0; i < password.length(); i++) {
     EEPROM.write(32 + i, password[i]);
   }
-  EEPROM.write(32 + password.length(), '\0'); // Конец строки
+  EEPROM.write(32 + password.length(), '\0');
   EEPROM.commit();
 }
 
@@ -51,6 +59,34 @@ void loadWiFiCredentials(String& ssid, String& password) {
   }
   ssid = String(ssidBuff);
   password = String(passBuff);
+}
+
+
+void handleWebSocketMessage(const String& message) {
+  if (message == "feed") {
+    feedAnimal();
+  } else {
+    Serial.println("Получено сообщение: " + message);
+  }
+}
+
+
+void webSocketEvent(WStype_t type, uint8_t * payload, size_t length) {
+    switch (type) {
+        case WStype_DISCONNECTED:
+            Serial.println("[WebSocket] Disconnected!");
+            break;
+        case WStype_CONNECTED:
+            Serial.println("[WebSocket] Connected to server!");
+            //"identify"
+            webSocket.sendTXT("{\"device_id\":\"feeder_001\"}");
+            break;
+        case WStype_TEXT:
+            Serial.printf("[WebSocket] Message: %s\n", payload);
+            break;
+        default:
+            break;
+    }
 }
 
 
@@ -70,7 +106,7 @@ void handleConfig(AsyncWebServerRequest *request) {
 
 
 void setup() {
-  // Настройка сервопривода
+
   servo.attach(servoPin);
   servo.write(0);
 
@@ -98,6 +134,10 @@ void setup() {
     WiFi.softAP(ssidAP, passwordAP);
     delay(500);
   }
+  else {
+    webSocket.begin(serverHost, serverPort, "/socket.io/");
+    webSocket.onEvent(webSocketEvent);
+  }
 
   Serial.begin(115200);
   Serial.println("Точка доступа запущена. Подключитесь к сети AutoFeederSetup.");
@@ -107,43 +147,25 @@ void setup() {
 
 
   server.on("/", HTTP_GET, [](AsyncWebServerRequest *request) {
-    String html = "<h1>Управление автокормушкой</h1>";
-    html += "<form action=\"/setInterval\" method=\"get\">Интервал кормления (в часах):<input name=\"interval\"><input type=\"submit\" value=\"Сохранить\"></form>";
-    html += "<a href=\"/feed\">Высыпать порцию корма</a><br>";
-    html += "<a href=\"/stream\">Посмотреть видео</a><br>";
+    String html = "<h1>Подключение кормушки</h1>";
     html += "<a href=\"/config\">Настройки сети</a><br>";
     request->send(200, "text/html; charset=utf-8", html);
-  });
-
-
-  server.on("/setInterval", HTTP_GET, [](AsyncWebServerRequest *request) {
-    if (request->hasParam("interval")) {
-      feedingInterval = request->getParam("interval")->value().toInt() * 3600000;
-      request->send(200, "text/plain; charset=utf-8", "Интервал кормления изменен.");
-    } else {
-      request->send(400, "text/plain; charset=utf-8", "Ошибка: параметр interval не найден.");
-    }
-  });
-
-
-  server.on("/feed", HTTP_GET, [](AsyncWebServerRequest *request) {
-    feedAnimal();
-    request->send(200, "text/plain; charset=utf-8", "Порция корма высыпана.");
-  });
-
-
-  server.on("/stream", HTTP_GET, [](AsyncWebServerRequest *request) {
-    request->send(200, "text/plain; charset=utf-8", "Здесь будет стрим с камеры.");
   });
 
 
   server.begin();
 }
 
+
 void loop() {
-  // Автоматическая подача корма
-  if (millis() - lastFeedingTime > feedingInterval) {
-    feedAnimal();
-    lastFeedingTime = millis();
-  }
+    webSocket.loop();
+
+    // Пример отправки данных каждые 5 секунд
+    static unsigned long lastSendTime = 0;
+    if (millis() - lastSendTime > 5000) {
+        lastSendTime = millis();
+        if (webSocket.isConnected()) {
+            webSocket.sendTXT("{\"device_id\":\"feeder_001\", \"status\":\"ok\"}");
+        }
+    }
 }
