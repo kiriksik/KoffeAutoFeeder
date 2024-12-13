@@ -1,0 +1,120 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Кормушка</title>
+    <!-- Bootstrap CSS -->
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0-alpha1/dist/css/bootstrap.min.css" rel="stylesheet">
+    <style>
+        body {
+            background-color: #f8d7da;
+            color: #721c24;
+        }
+        .navbar {
+            background-color: #dc3545;
+        }
+        .navbar-brand, .navbar-nav .nav-link {
+            color: white !important;
+        }
+        .btn-custom {
+            background-color: #dc3545;
+            color: white;
+            border: none;
+        }
+        .btn-custom:hover {
+            background-color: #a71d2a;
+        }
+        .card {
+            border-color: #f5c6cb;
+        }
+        .card-header {
+            background-color: #f5c6cb;
+            color: #721c24;
+        }
+    </style>
+</head>
+<body>
+    <nav class="navbar navbar-expand-lg navbar-dark">
+        <div class="container-fluid">
+            <a class="navbar-brand" href="#">Кормушка</a>
+            <div class="collapse navbar-collapse">
+                <ul class="navbar-nav ms-auto">
+                    <li class="nav-item">
+                        <a class="nav-link" href="/stream">Прямой эфир</a>
+                    </li>
+                </ul>
+            </div>
+        </div>
+    </nav>
+
+    <div class="container mt-4">
+        <div class="row">
+            <div class="col-md-6">
+                <div class="card">
+                    <div class="card-header">Управление кормлением</div>
+                    <div class="card-body">
+                        <button class="btn btn-custom btn-lg w-100" onclick="feed()">Кормить</button>
+                    </div>
+                </div>
+            </div>
+            <div class="col-md-6">
+                <div class="card">
+                    <div class="card-header">Настройка интервала</div>
+                    <div class="card-body">
+                        <form onsubmit="setInterval(event)">
+                            <div class="mb-3">
+                                <label for="interval" class="form-label">Интервал кормления (в минутах):</label>
+                                <input type="number" class="form-control" id="interval" name="interval" min="1" required>
+                            </div>
+                            <button type="submit" class="btn btn-custom w-100">Установить интервал</button>
+                        </form>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <div class="row mt-4">
+            <div class="col-md-12">
+                <div class="card">
+                    <div class="card-header">Прямой эфир</div>
+                    <div class="card-body text-center">
+                        <a href="/stream" class="btn btn-custom btn-lg">Смотреть видео</a>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Bootstrap JS and dependencies -->
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0-alpha1/dist/js/bootstrap.bundle.min.js"></script>
+    <script src="https://cdn.socket.io/4.0.0/socket.io.min.js"></script>
+    <script>
+        const socket = io('http://localhost:5000');
+
+        socket.on('status', function(data) {
+            console.log(data.message);
+        });
+
+        function feed() {
+            fetch('/feed', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ device_id: 'feeder_001' })
+            }).then(response => response.text())
+              .then(data => alert(data));
+        }
+
+        function setInterval(event) {
+            event.preventDefault();
+            const interval = document.getElementById('interval').value;
+            fetch('/set_interval', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ device_id: 'feeder_001', interval: interval })
+            }).then(response => response.text())
+              .then(data => alert(data));
+        }
+    </script>
+</body>
+</html>
