@@ -5,7 +5,9 @@
 > - Провода, диоды и кнопки - для индикации и ручного взаимодействия
 
 **Сервер**
+
 [Код](https://github.com/kiriksik/KoffeAutoFeeder/blob/main/Server_ESP/Server_ESPconvertor/server.py)
+
 Используется:
 - Flask для реализации Web-сервера
 - SocketsIO для общения с кормушкой
@@ -14,8 +16,11 @@
 
 
 **Кормушка**
+
 *Основное устройство*
+
 [Код](https://github.com/kiriksik/KoffeAutoFeeder/blob/main/Corm/esp_config/esp_config.ino)
+
 Используется:
 - EEPROM для хранения информации о WiFi в энергонезависимой памяти
 - SocketIOclient для связи с сервером с помощью SocketsIO
@@ -24,4 +29,5 @@
 
 
 *Камера IN-DEV*
+
 [Код]()
