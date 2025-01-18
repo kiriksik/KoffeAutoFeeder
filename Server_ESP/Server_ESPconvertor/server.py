@@ -1,15 +1,18 @@
 from flask import Flask, render_template, request
 from flask_socketio import SocketIO, emit
+from flask_socketio import join_room, leave_room
 import json
 
 app = Flask(__name__)
 app.config['SECRET_KEY'] = 'your_secret_key'
 socketio = SocketIO(app, cors_allowed_origins="*")
 
-
+browsers = {}
 devices = {}
 feeding_intervals = {}
 urls_to_cams = {}
+
+last_frame = None
 
 
 @app.route('/')
@@ -41,7 +44,7 @@ def set_interval():
 
 @app.route('/stream')
 def stream():
-    return render_template('stream.html', stream_url='http://192.168.1.100:81/stream')
+    return render_template('stream.html')
 
 
 @socketio.on('connect')
@@ -52,22 +55,21 @@ def handle_connect():
 
 @socketio.on('identify')
 def handle_identify(data):
+    client_type = data.get('type')
     device_id = data.get('device_id')
     feeding_interval = data.get('feeding_interval')
     url_to_cam = data.get('url_to_cam')
-    if device_id is not None and url_to_cam is not None and feeding_interval is not None:
-        devices[device_id] = request.sid
-        feeding_intervals[device_id] = feeding_interval // 60000
-        urls_to_cams[device_id] = url_to_cam
-        print(f"Устройство зарегистрировано: {device_id} {feeding_interval} {url_to_cam}")
-
-
-# @socketio.on('status')
-# def handle_status(data):
-    # device_id = data.get('device_id')
-    # if device_id:
-    #     devices[device_id] = request.sid
-    #     print(f"Устройство доступно:", request.sid)
+    if client_type == 'device' and device_id:
+        if device_id is not None and url_to_cam is not None and feeding_interval is not None:
+            devices[device_id] = request.sid
+            feeding_intervals[device_id] = feeding_interval // 60000
+            urls_to_cams[device_id] = url_to_cam
+            join_room('devices')
+            print(f"Устройство зарегистрировано: {device_id} {feeding_interval} {url_to_cam}")
+    elif client_type == 'browser':
+        browsers[request.sid] = True
+        join_room('browsers')
+        print("Браузер подключен")
 
 
 @socketio.on('connect')
@@ -75,14 +77,39 @@ def on_connect():
     print("Устройство подключено:", request.sid)
 
 
+@socketio.on("camera_frame")
+def handle_camera_frame(data):
+    global last_frame
+    last_frame = data.get('image')
+    socketio.emit("new_frame", {"image": last_frame}, room='browsers')
+
+
+@socketio.on("get_frame")
+def send_frame_to_client():
+    # print("Запрос кадра:")
+    # device_id = request.json.get('device_id')
+    socketio.emit('command', {'action': 'get_frame'})
+
+
 @socketio.on('disconnect')
-def on_disconnect():
-    print("Устройство отключено:", request.sid)
+def handle_disconnect():
+    if request.sid in browsers:
+        del browsers[request.sid]
+        leave_room('browsers')
+        print("Браузер отключен")
+    elif request.sid in devices.values():
+        device_id = next((k for k, v in devices.items() if v == request.sid), None)
+        if device_id:
+            del devices[device_id]
+            leave_room('devices')
+            print(f"Устройство отключено: {device_id}")
+
 
 @socketio.on('smth')
 def handle_smth(data):
     info = data.get('info')
     print(f"Устройство что то сделало:", info)
+
 
 @socketio.on('disconnect')
 def handle_disconnect():
@@ -90,6 +117,7 @@ def handle_disconnect():
         if sid == request.sid:
             del devices[device_id]
             print(f"Устройство отключено: {device_id}")
+
 
 if __name__ == '__main__':
     socketio.run(app, host='0.0.0.0', port=5000)
