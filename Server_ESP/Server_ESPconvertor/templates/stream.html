@@ -1,28 +1,86 @@
 <!DOCTYPE html>
-<html>
+<html lang="en">
 <head>
-  <title>Camera Stream</title>
-  <script src="https://cdn.socket.io/4.0.0/socket.io.min.js"></script>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Прямой эфир</title>
+    <!-- Bootstrap CSS -->
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0-alpha1/dist/css/bootstrap.min.css" rel="stylesheet">
+    <style>
+        body {
+            background-color: #f8d7da;
+            color: #721c24;
+        }
+        .navbar {
+            background-color: #dc3545;
+        }
+        .navbar-brand, .navbar-nav .nav-link {
+            color: white !important;
+        }
+        .card {
+            border-color: #f5c6cb;
+        }
+        .card-header {
+            background-color: #f5c6cb;
+            color: #721c24;
+        }
+        .btn-custom {
+            background-color: #dc3545;
+            color: white;
+            border: none;
+        }
+        .btn-custom:hover {
+            background-color: #a71d2a;
+        }
+        #camera-feed {
+            max-width: 100%;
+            height: auto;
+            border: 2px solid #f5c6cb;
+            border-radius: 5px;
+        }
+    </style>
 </head>
 <body>
-  <h1>Camera Stream</h1>
-  <img id="camera-feed" src="" alt="Loading stream...">
+    <nav class="navbar navbar-expand-lg navbar-dark">
+        <div class="container-fluid">
+            <a class="navbar-brand" href="#">Кормушка</a>
+            <div class="collapse navbar-collapse">
+                <ul class="navbar-nav ms-auto">
+                    <li class="nav-item">
+                        <a class="nav-link" href="/">Домой</a>
+                    </li>
+                </ul>
+            </div>
+        </div>
+    </nav>
 
-  <script>
-    const socket = io();
+    <div class="container mt-4">
+        <div class="card">
+            <div class="card-header text-center">Прямой эфир с камеры</div>
+            <div class="card-body text-center">
+                <img id="camera-feed" src="" alt="Loading stream...">
+            </div>
+        </div>
+    </div>
 
-    socket.on("connect", () => {
-      socket.emit("identify", { type: "browser" });
-    });
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0-alpha1/dist/js/bootstrap.bundle.min.js"></script>
+    <script src="https://cdn.socket.io/4.0.0/socket.io.min.js"></script>
+    <script>
+        const socket = io();
+        const deviceId = "{{ device_id }}";
 
-    setInterval(() => {
-      socket.emit("get_frame");
-    }, 1000);
+        socket.on("connect", () => {
+            socket.emit("identify", { type: "browser", device_id: deviceId });
+        });
 
-    socket.on("new_frame", (data) => {
-      const img = document.getElementById("camera-feed");
-      img.src = "data:image/jpeg;base64," + data.image;
-    });
-  </script>
+        setInterval(() => {
+            socket.emit("get_frame");
+        }, 100);
+
+        socket.on("new_frame", (data) => {
+            const img = document.getElementById("camera-feed");
+            img.src = "data:image/jpeg;base64," + data.image;
+        });
+    </script>
 </body>
 </html>

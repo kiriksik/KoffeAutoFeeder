@@ -4,7 +4,6 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Кормушка</title>
-    <!-- Bootstrap CSS -->
     <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0-alpha1/dist/css/bootstrap.min.css" rel="stylesheet">
     <style>
         body {
@@ -42,6 +41,9 @@
                 <ul class="navbar-nav ms-auto">
                     <li class="nav-item">
                         <a class="nav-link" href="/stream">Прямой эфир</a>
+                    </li>
+                    <li class="nav-item">
+                        <button class="btn btn-custom nav-link" onclick="logout()">Выход</button>
                     </li>
                 </ul>
             </div>
@@ -86,7 +88,6 @@
         </div>
     </div>
 
-    <!-- Bootstrap JS and dependencies -->
     <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0-alpha1/dist/js/bootstrap.bundle.min.js"></script>
     <script src="https://cdn.socket.io/4.0.0/socket.io.min.js"></script>
     <script>
@@ -114,6 +115,19 @@
                 body: JSON.stringify({ device_id: 'feeder_001', interval: interval })
             }).then(response => response.text())
               .then(data => alert(data));
+        }
+
+        function logout() {
+            fetch('/logout', {
+                method: 'POST'
+            }).then(response => {
+                if (response.ok) {
+                    alert('Вы вышли из системы');
+                    window.location.href = '/login'; // Перенаправляем на страницу авторизации
+                } else {
+                    alert('Ошибка при выходе');
+                }
+            });
         }
     </script>
 </body>
