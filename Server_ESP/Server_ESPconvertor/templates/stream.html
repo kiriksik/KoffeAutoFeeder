@@ -33,11 +33,14 @@
             background-color: #a71d2a;
         }
         #camera-feed {
-            max-width: 100%;
-            height: auto;
+            object-fit: cover;
+            width: 100%;
+            max-height: 70vh;
             border: 2px solid #f5c6cb;
             border-radius: 5px;
+            display: none;
         }
+
     </style>
 </head>
 <body>
@@ -57,9 +60,17 @@
     <div class="container mt-4">
         <div class="card">
             <div class="card-header text-center">Прямой эфир с камеры</div>
+            <div id="error-message" class="alert alert-danger mt-3" style="display: none;"></div>
             <div class="card-body text-center">
-                <img id="camera-feed" src="" alt="Loading stream...">
+                <div id="loading" class="text-muted mb-3 d-flex justify-content-center align-items-center flex-column">
+                    <div class="spinner-border text-danger mb-2" role="status" id="loading-spinner">
+                        <span class="visually-hidden">Загрузка...</span>
+                    </div>
+                    <div>Загрузка видео...</div>
+                </div>
+                <img id="camera-feed" src="" alt="Поток не загружен">
             </div>
+
         </div>
     </div>
 
@@ -77,10 +88,40 @@
             socket.emit("get_frame");
         }, 100);
 
+
         socket.on("new_frame", (data) => {
             const img = document.getElementById("camera-feed");
+            const loading = document.getElementById("loading");
+
             img.src = "data:image/jpeg;base64," + data.image;
+            img.style.display = 'block';
+            loading.classList.add("d-none");
+            loading.classList.remove("d-flex");
+
         });
+
+        socket.on("disconnect", () => {
+            const loading = document.getElementById("loading");
+            const img = document.getElementById("camera-feed");
+            img.style.display = 'none';
+            loading.classList.remove("d-none");
+            loading.classList.add("d-flex");
+
+        });
+
+
+
+        socket.on("error", (data) => {
+            const errorDiv = document.getElementById("error-message");
+            errorDiv.innerText = data.message || "Ошибка соединения с устройством";
+            errorDiv.style.display = "block";
+
+            setTimeout(() => {
+                errorDiv.style.display = "none";
+            }, 5000); // сообщение исчезает через 5 секунд
+        });
+
+
     </script>
 </body>
 </html>
