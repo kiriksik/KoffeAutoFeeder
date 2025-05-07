@@ -3,6 +3,8 @@ from flask import Flask, render_template, request, session, redirect, url_for
 from flask_socketio import SocketIO, emit, join_room, leave_room
 from functools import wraps
 from werkzeug.security import generate_password_hash, check_password_hash
+import eventlet
+import eventlet.wsgi
 
 app = Flask(__name__)
 app.config['SECRET_KEY'] = 'your_secret_key'
@@ -274,4 +276,4 @@ def handle_smth(data):
 
 
 if __name__ == '__main__':
-    socketio.run(app, host='0.0.0.0', port=2222, debug=False)
+    socketio.run(app, host='0.0.0.0', port=2222, debug=True)
