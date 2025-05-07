@@ -35,7 +35,6 @@ const int servoPin = 2;  // Пин сервопривода
 const int ledPin = 2;     // Пин встроенного светодиода
 
 // Начальный Wi-Fi
-// const char* ssidAP = "AutoFeederSetup";
 const char* passwordAP = "12345678";
 
 String wifiSSID = "";
@@ -50,8 +49,8 @@ unsigned long servoOpenTime = 1000; //в миллисекундах
 unsigned long lastFeedingTime = 0;
 
 
-const char* serverHost = "192.168.31.172";
-const int serverPort = 5000;
+const char* serverHost = "188.134.78.158";
+const int serverPort = 2222;
 const char* deviceID = "feeder_003";
 const char* password = "123123123";
 
@@ -62,9 +61,26 @@ unsigned long pingInterval = 30000;  // Интервал пинга
 int trying = 0;
 bool busy = false;
 
+void EEPROM_writeULong(int address, unsigned long value) {
+  for (int i = 0; i < 4; i++) {
+    EEPROM.write(address + i, (value >> (8 * i)) & 0xFF);
+  }
+}
+
+unsigned long EEPROM_readULong(int address) {
+  unsigned long value = 0;
+  for (int i = 0; i < 4; i++) {
+    value |= ((unsigned long)EEPROM.read(address + i)) << (8 * i);
+  }
+  return value;
+}
+
+
+
+
 void feedAnimal() {
 
-
+  feederServo.attach(servoPin);
   Serial.println("Opening feeder...");
   feederServo.write(0);  
   delay(100);
@@ -72,18 +88,66 @@ void feedAnimal() {
   delay(servoOpenTime);
   Serial.println("Closing feeder...");
   feederServo.write(0); 
-  // feederServo.detach();
+  delay(500);
+  feederServo.detach();
 }
 
-void test() {
-  digitalWrite(ledPin, HIGH);
-  delay(500);
-  digitalWrite(ledPin, LOW);
+camera_fb_t* getCameraFrameWithTimeout(unsigned long timeout = 3000) {
+  unsigned long start = millis();
+  camera_fb_t* fb = nullptr;
+
+  while ((millis() - start) < timeout) {
+    fb = esp_camera_fb_get();
+    if (fb != nullptr) {
+      return fb;
+    }
+    delay(100);
+  }
+
+  Serial.println("Камера не ответила за отведённое время!");
+  return nullptr;
 }
 
 void sendImage(camera_fb_t* fb) {
   String base64Image = base64::encode(fb->buf, fb->len);
+  esp_camera_fb_return(fb);
   sendImageToServer(base64Image);
+
+}
+
+void sendImageToServer(String imageData) {
+  DynamicJsonDocument doc(1024);
+  JsonArray array = doc.to<JsonArray>();
+  array.add("camera_frame");
+  JsonObject param = array.createNestedObject();
+  if (imageData.length() > 100000) {
+    esp_camera_fb_return(fb);
+    Serial.println("Слишком большое изображение");
+    return;
+  }
+  param["image"] = imageData;
+  param["device_id"] = deviceID;
+
+  String output;
+  serializeJson(doc, output);
+  socketIO.sendEVENT(output);
+  Serial.println("[Socket.IO] Image sent to server.");
+  doc.clear();
+}
+
+void saveFeedingInterval(unsigned long interval) {
+  EEPROM.begin(512);
+  EEPROM.writeULong(100, interval); // сохраняем с offset = 100
+  EEPROM.commit();
+  EEPROM.end();
+}
+
+unsigned long loadFeedingInterval() {
+  EEPROM.begin(512);
+  unsigned long interval = EEPROM.readULong(100);
+  EEPROM.commit();
+  EEPROM.end();
+  return interval;
 }
 
 void saveWiFiCredentials(const String& ssid, const String& password) {
@@ -97,24 +161,8 @@ void saveWiFiCredentials(const String& ssid, const String& password) {
   }
   EEPROM.write(32 + password.length(), '\0');
   EEPROM.commit();
+  EEPROM.end();
 }
-
-
-void sendImageToServer(String imageData) {
-  DynamicJsonDocument doc(1024);
-  JsonArray array = doc.to<JsonArray>();
-  array.add("camera_frame");
-  JsonObject param = array.createNestedObject();
-  param["image"] = imageData;
-  param["device_id"] = deviceID;
-
-  String output;
-  serializeJson(doc, output);
-  socketIO.sendEVENT(output);
-  Serial.println("[Socket.IO] Image sent to server.");
-  doc.clear();
-}
-
 
 void loadWiFiCredentials(String& ssid, String& password) {
   EEPROM.begin(512);
@@ -126,13 +174,22 @@ void loadWiFiCredentials(String& ssid, String& password) {
   }
   ssid = String(ssidBuff);
   password = String(passBuff);
+  EEPROM.commit();
+  EEPROM.end();
 }
+
+
+
+
+
 
 void socketIOEvent(socketIOmessageType_t type, uint8_t* payload, size_t length) {
   switch (type) {
     case sIOtype_DISCONNECT:
-      Serial.println("[Socket.IO] Disconnected!");
+      Serial.println("[Socket.IO] Disconnected! Trying to reconnect...");
+      socketIO.begin(serverHost, serverPort, "/socket.io/?EIO=4");
       break;
+
     case sIOtype_CONNECT:
       {
         socketIO.send(sIOtype_CONNECT, "/");
@@ -180,14 +237,18 @@ void socketIOEvent(socketIOmessageType_t type, uint8_t* payload, size_t length) 
         } else if (command == "set_interval") {
           int interval = jsonObject["interval"];
           feedingInterval = interval * 60000;
+          saveFeedingInterval(feedingInterval);
         } else if (command == "get_frame") {
-          camera_fb_t *fb = esp_camera_fb_get();
+          camera_fb_t* fb = getCameraFrameWithTimeout();
+          for (int i = 0; i < 3 && fb == nullptr; i++) {
+            fb = getCameraFrameWithTimeout();
+            if (!fb) delay(100);
+          }
           if (!fb) {
             Serial.println("Failed to capture image");
             return;
           }
           sendImage(fb);
-          esp_camera_fb_return(fb);
         } else {
           Serial.println("Unknown command: " + command);
         }
@@ -273,13 +334,16 @@ camera_config_t config;
   config.pixel_format = PIXFORMAT_JPEG;
 
   if (psramFound()) {
-    config.frame_size = FRAMESIZE_QVGA;
-    config.jpeg_quality = 10;
+    Serial.println("Psram Avaliable");
+    config.frame_size = FRAMESIZE_VGA;
+    config.jpeg_quality = 8;
     config.fb_count = 2;
   } else {
-    config.frame_size = FRAMESIZE_QQVGA;
-    config.jpeg_quality = 11;
-    config.fb_count = 1;
+    Serial.println("Psram Not Avaliable");
+    config.frame_size = FRAMESIZE_VGA;     // 640x480
+    config.jpeg_quality = 8;
+    config.fb_count = 2;
+
   }
 
   if (esp_camera_init(&config) != ESP_OK) {
@@ -288,6 +352,10 @@ camera_config_t config;
   }
 
   Serial.println("Камера инициализирована");
+
+  feedingInterval = loadFeedingInterval();
+  Serial.print("Интервал кормления сохранён: ");
+  Serial.println(feedingInterval);
 
   if (WiFi.status() == WL_CONNECTED) {
     socketIO.begin(serverHost, serverPort, "/socket.io/?EIO=4");
@@ -300,6 +368,8 @@ camera_config_t config;
 
 
 void loop() {
+  // Serial.printf("[MEM] Free heap: %u, PSRAM: %u\n", ESP.getFreeHeap(), ESP.getFreePsram());
+
   unsigned long currentMillis = millis();
   if (currentMillis - lastFeedingTime >= feedingInterval) {
       lastFeedingTime = currentMillis;
