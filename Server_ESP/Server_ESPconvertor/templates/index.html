@@ -178,15 +178,19 @@
                 const now = Date.now();
                 const diff = nextFeedingTimestamp - now;
                 const countdown = document.getElementById('next-feeding');
+
                 if (diff > 0) {
                     const minutes = Math.floor(diff / 60000);
                     const seconds = Math.floor((diff % 60000) / 1000);
                     countdown.textContent = `${minutes} мин ${seconds} сек`;
                 } else {
                     countdown.textContent = 'Скоро!';
+                    socket.emit('request_status'); // запрашиваем обновлённый статус
+                    nextFeedingTimestamp = null; // чтобы не застревать в этом состоянии
                 }
             }
         }
+
 
         setInterval(updateCountdown, 1000);
     </script>

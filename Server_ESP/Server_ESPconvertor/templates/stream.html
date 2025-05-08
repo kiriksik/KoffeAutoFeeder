@@ -93,10 +93,12 @@
         socket.on("new_frame", (data) => {
             const img = document.getElementById("camera-feed");
             const loading = document.getElementById("loading");
+            const errorDiv = document.getElementById("error-message");
             img.src = "data:image/jpeg;base64," + data.image;
             img.style.display = 'block';
             loading.classList.add("d-none");
             loading.classList.remove("d-flex");
+            errorDiv.classList.add("d-none");
         });
 
         socket.on("disconnect", () => {
@@ -111,10 +113,6 @@
             const errorDiv = document.getElementById("error-message");
             errorDiv.innerText = data.message || "Ошибка соединения с устройством";
             errorDiv.classList.remove("d-none");
-
-            setTimeout(() => {
-                errorDiv.classList.add("d-none");
-            }, 5000);
         });
     </script>
 </body>
