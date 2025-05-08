@@ -5,6 +5,7 @@ __pycache__/
 .vscode/
 .idea/
 Server_ESP/Server_ESPconvertor/.idea
+Server_ESP/Server_ESPconvertor/event_log.db
 *.swp
 
 .venv/
