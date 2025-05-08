@@ -1,112 +1,122 @@
 <!DOCTYPE html>
-<html lang="en">
+<html lang="ru">
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Кормушка</title>
     <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0-alpha1/dist/css/bootstrap.min.css" rel="stylesheet">
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.10.5/font/bootstrap-icons.css" rel="stylesheet">
     <style>
         body {
-            background-color: #f8d7da;
-            color: #721c24;
+            background-color: #f3f4f6;
         }
         .navbar {
-            background-color: #dc3545;
+            background-color: #4f46e5;
         }
-        .navbar-brand, .navbar-nav .nav-link {
+        .navbar-brand,
+        .nav-link,
+        .btn {
             color: white !important;
         }
-        .btn-custom {
-            background-color: #dc3545;
-            color: white;
+        .btn-primary {
+            background-color: #4f46e5;
             border: none;
         }
-        .btn-custom:hover {
-            background-color: #a71d2a;
+        .btn-primary:hover {
+            background-color: #3730a3;
         }
         .card {
-            border-color: #f5c6cb;
+            border: none;
+            border-radius: 1rem;
+            box-shadow: 0 0.5rem 1rem rgba(0,0,0,0.1);
         }
         .card-header {
-            background-color: #f5c6cb;
-            color: #721c24;
+            background-color: #eef2ff;
+            color: #3730a3;
+            font-weight: 600;
+        }
+        .countdown {
+            font-size: 1.25rem;
+            font-weight: 500;
         }
     </style>
 </head>
 <body>
-    <nav class="navbar navbar-expand-lg navbar-dark">
+    <!-- Навбар -->
+    <nav class="navbar navbar-expand-lg navbar-dark sticky-top">
         <div class="container-fluid">
-            <a class="navbar-brand" href="#">Кормушка</a>
-            <div class="collapse navbar-collapse">
-                <ul class="navbar-nav ms-auto">
+            <a class="navbar-brand" href="#"><i class="bi bi-feather"></i> Кормушка</a>
+            <div class="collapse navbar-collapse justify-content-end">
+                <ul class="navbar-nav">
                     <li class="nav-item">
-                        <a class="nav-link" href="/stream">Прямой эфир</a>
+                        <a class="nav-link" href="/stream"><i class="bi bi-camera-video"></i> Прямой эфир</a>
                     </li>
                     <li class="nav-item">
-                        <button class="btn btn-custom nav-link" onclick="logout()">Выход</button>
+                        <button class="btn btn-outline-light ms-2" onclick="logout()">
+                            <i class="bi bi-box-arrow-right"></i> Выход
+                        </button>
                     </li>
                 </ul>
             </div>
         </div>
     </nav>
 
-    <div class="container mt-4">
-        <div class="row">
+    <!-- Контент -->
+    <div class="container py-5">
+        <div class="row g-4">
             <div class="col-md-6">
-                <div class="card">
+                <div class="card h-100">
                     <div class="card-header">Управление кормлением</div>
-                    <div class="card-body">
-                        <button class="btn btn-custom btn-lg w-100" onclick="feed()">Кормить</button>
+                    <div class="card-body d-grid">
+                        <button class="btn btn-primary btn-lg" onclick="feed()">
+                            <i class="bi bi-play-circle me-2"></i>Кормить
+                        </button>
                     </div>
                 </div>
             </div>
+
             <div class="col-md-6">
-                <div class="card">
+                <div class="card h-100">
                     <div class="card-header">Настройка интервала</div>
                     <div class="card-body">
                         <form onsubmit="setFeedingInterval(event)">
                             <div class="mb-3">
-                                <label for="interval" class="form-label">Интервал кормления (в минутах):</label>
+                                <label for="interval" class="form-label">Интервал кормления (мин):</label>
                                 <input type="number" class="form-control" id="interval" name="interval" min="1" required>
                             </div>
-                            <button type="submit" class="btn btn-custom w-100">Установить интервал</button>
+                            <button type="submit" class="btn btn-primary w-100">
+                                <i class="bi bi-clock-history me-2"></i>Установить интервал
+                            </button>
                         </form>
                     </div>
                 </div>
             </div>
-        </div>
-        <div class="row mt-4">
+
             <div class="col-md-12">
                 <div class="card">
                     <div class="card-header">Состояние кормления</div>
                     <div class="card-body">
-                        <p><strong>Текущий интервал кормления:</strong> <span id="current-interval">—</span> минут</p>
-                        <p><strong>Время до следующего кормления:</strong> <span id="next-feeding">—</span></p>
+                        <p><i class="bi bi-hourglass-split"></i> Текущий интервал: <strong><span id="current-interval">—</span> минут</strong></p>
+                        <p><i class="bi bi-alarm"></i> До следующего кормления: <span id="next-feeding" class="countdown">—</span></p>
                     </div>
                 </div>
             </div>
-        </div>
 
-        <div class="row mt-4">
-            <div class="col-md-12">
-                <div class="card">
-                    <div class="card-header">Прямой эфир</div>
-                    <div class="card-body text-center">
-                        <a href="/stream" class="btn btn-custom btn-lg">Смотреть видео</a>
-                    </div>
-                </div>
+            <div class="col-md-12 text-center">
+                <a href="/stream" class="btn btn-primary btn-lg">
+                    <i class="bi bi-camera-video me-2"></i>Смотреть прямой эфир
+                </a>
             </div>
         </div>
     </div>
 
+    <!-- Scripts -->
     <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0-alpha1/dist/js/bootstrap.bundle.min.js"></script>
     <script src="https://cdn.socket.io/4.0.0/socket.io.min.js"></script>
     <script>
         let nextFeedingTimestamp = null;
         let feedingIntervalMinutes = null;
-
         const socket = io();
-
 
         socket.on('connect', () => {
             console.log('Соединение установлено');
@@ -117,6 +127,12 @@
             console.log(data.message);
         });
 
+        socket.on('feeding_status', function(data) {
+            feedingIntervalMinutes = data.interval;
+            nextFeedingTimestamp = Date.now() + data.time_left_ms;
+            document.getElementById('current-interval').textContent = feedingIntervalMinutes;
+            updateCountdown();
+        });
 
         function setFeedingInterval(event) {
             event.preventDefault();
@@ -125,18 +141,14 @@
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify({ interval: interval })
-            }).then(response => response.text())
-              .then(data => alert(data));
+            }).then(res => res.text()).then(alert);
         }
 
-
         function logout() {
-            fetch('/logout', {
-                method: 'POST'
-            }).then(response => {
+            fetch('/logout', { method: 'POST' }).then(response => {
                 if (response.ok) {
                     alert('Вы вышли из системы');
-                    window.location.href = '/login'; // Перенаправляем на страницу авторизации
+                    window.location.href = '/login';
                 } else {
                     alert('Ошибка при выходе');
                 }
@@ -146,44 +158,34 @@
         function feed() {
             const btn = document.querySelector('button[onclick="feed()"]');
             btn.disabled = true;
-            btn.innerText = "Кормим...";
-
+            btn.innerHTML = "<i class='bi bi-hourglass-split me-2'></i>Кормим...";
             fetch('/feed', {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' }
-            }).then(response => response.text())
+            }).then(res => res.text())
               .then(data => {
-                alert(data);
-                btn.disabled = false;
-                btn.innerText = "Кормить";
+                  alert(data);
+                  btn.disabled = false;
+                  btn.innerHTML = "<i class='bi bi-play-circle me-2'></i>Кормить";
               });
         }
-
 
         function updateCountdown() {
             if (nextFeedingTimestamp) {
                 const now = Date.now();
                 const diff = nextFeedingTimestamp - now;
+                const countdown = document.getElementById('next-feeding');
                 if (diff > 0) {
                     const minutes = Math.floor(diff / 60000);
                     const seconds = Math.floor((diff % 60000) / 1000);
-                    document.getElementById('next-feeding').textContent = `${minutes} мин ${seconds} сек`;
+                    countdown.textContent = `${minutes} мин ${seconds} сек`;
                 } else {
-                    document.getElementById('next-feeding').textContent = 'Скоро!';
+                    countdown.textContent = 'Скоро!';
                 }
             }
         }
 
         setInterval(updateCountdown, 1000);
-
-        socket.on('feeding_status', function(data) {
-            feedingIntervalMinutes = data.interval;
-            nextFeedingTimestamp = Date.now() + data.time_left_ms;
-
-            document.getElementById('current-interval').textContent = feedingIntervalMinutes;
-            updateCountdown();
-        });
-
     </script>
 </body>
 </html>
