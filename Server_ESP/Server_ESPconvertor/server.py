@@ -5,10 +5,14 @@ from functools import wraps
 from werkzeug.security import generate_password_hash, check_password_hash
 import eventlet
 import eventlet.wsgi
+import sqlite3
+import os
+
 
 app = Flask(__name__)
 app.config['SECRET_KEY'] = 'your_secret_key'
 socketio = SocketIO(app, cors_allowed_origins="*")
+DB_PATH = 'event_log.db'
 
 FRAME_REQUEST_INTERVAL = 0.3
 INACTIVITY_TIMEOUT = 60  # секунд
@@ -59,7 +63,28 @@ class DeviceManager:
                 print(f"Устройство {device_id} удалено за неактивность")
 
 
-manager = DeviceManager()
+def init_db():
+    if not os.path.exists(DB_PATH):
+        conn = sqlite3.connect(DB_PATH)
+        c = conn.cursor()
+        c.execute('''
+            CREATE TABLE events (
+                id INTEGER PRIMARY KEY AUTOINCREMENT,
+                timestamp DATETIME DEFAULT CURRENT_TIMESTAMP,
+                device_id TEXT,
+                action TEXT
+            )
+        ''')
+        conn.commit()
+        conn.close()
+
+
+def log_event(device_id, action):
+    conn = sqlite3.connect(DB_PATH)
+    c = conn.cursor()
+    c.execute('INSERT INTO events (device_id, action) VALUES (?, ?)', (device_id, action))
+    conn.commit()
+    conn.close()
 
 
 def login_required(f):
@@ -109,6 +134,7 @@ def feed():
     if device_id in manager.devices:
         socketio.emit('command', {'action': 'feed'}, room=manager.devices[device_id])
         manager.device_last_activity_time[device_id] = time.time()
+        log_event(device_id, "Команда кормления отправлена")
         return "Команда отправлена!"
     else:
         return "Устройство не подключено.", 404
@@ -128,6 +154,7 @@ def set_interval():
     if device_id in manager.devices:
         manager.feeding_intervals[device_id] = interval
         socketio.emit('command', {'action': 'set_interval', 'interval': interval}, room=manager.devices[device_id])
+        log_event(device_id, f"Установлен новый интервал: {interval} мин")
         return f"Интервал кормления для {device_id} установлен на {interval} минут."
     else:
         return "Устройство не подключено.", 404
@@ -139,6 +166,17 @@ def set_interval():
 def stream():
     device_id = session.get('device_id')
     return render_template('stream.html', device_id=device_id)
+
+@app.route('/history')
+@login_required
+def history():
+    device_id = session.get('device_id')
+    conn = sqlite3.connect(DB_PATH)
+    c = conn.cursor()
+    c.execute('SELECT timestamp, action FROM events WHERE device_id = ? ORDER BY timestamp DESC LIMIT 50', (device_id,))
+    events = c.fetchall()
+    conn.close()
+    return render_template('history.html', events=events)
 
 
 @socketio.on('connect')
@@ -158,6 +196,7 @@ def handle_disconnect():
             if dev_sid == sid:
                 manager.remove_device(device_id)
                 leave_room('devices')
+                log_event(device_id, "Устройство отключено")
                 print(f"Устройство отключено: {device_id}")
 
 
@@ -273,6 +312,9 @@ def handle_smth(data):
 
     print(f"Устройство что то сделало:", info)
 
+
+manager = DeviceManager()
+init_db()
 
 if __name__ == '__main__':
     socketio.run(app, host='0.0.0.0', port=2222, debug=False)

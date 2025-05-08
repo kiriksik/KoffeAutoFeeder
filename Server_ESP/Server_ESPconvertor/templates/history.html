@@ -1,0 +1,111 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+    <meta charset="UTF-8">
+    <title>История событий</title>
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0-alpha1/dist/css/bootstrap.min.css" rel="stylesheet">
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.10.5/font/bootstrap-icons.css" rel="stylesheet">
+    <style>
+        body {
+            background-color: #f3f4f6;
+        }
+        .navbar {
+            background-color: #4f46e5;
+        }
+        .navbar-brand,
+        .nav-link,
+        .btn {
+            color: white !important;
+        }
+        .btn-primary {
+            background-color: #4f46e5;
+            border: none;
+        }
+        .btn-primary:hover {
+            background-color: #3730a3;
+        }
+        .card {
+            border: none;
+            border-radius: 1rem;
+            box-shadow: 0 0.5rem 1rem rgba(0,0,0,0.1);
+        }
+        .card-header {
+            background-color: #eef2ff;
+            color: #3730a3;
+            font-weight: 600;
+        }
+        .event-item {
+            padding: 1rem;
+            background-color: white;
+            border-radius: 1rem;
+            box-shadow: 0 0.25rem 0.5rem rgba(0, 0, 0, 0.05);
+            margin-bottom: 1rem;
+            display: flex;
+            align-items: center;
+            gap: 1rem;
+        }
+        .event-icon {
+            font-size: 1.5rem;
+            color: #4f46e5;
+        }
+    </style>
+</head>
+<body>
+    <!-- Навбар -->
+    <nav class="navbar navbar-expand-lg navbar-dark sticky-top">
+        <div class="container-fluid">
+            <a class="navbar-brand" href="/"><i class="bi bi-feather"></i> Кормушка</a>
+            <div class="collapse navbar-collapse justify-content-end">
+                <ul class="navbar-nav">
+                    <li class="nav-item">
+                        <a class="nav-link" href="/"><i class="bi bi-house-door"></i> Главная</a>
+                    </li>
+                    <li class="nav-item">
+                        <a class="nav-link" href="/stream"><i class="bi bi-camera-video"></i> Прямой эфир</a>
+                    </li>
+                </ul>
+            </div>
+        </div>
+    </nav>
+
+    <!-- Контент -->
+    <div class="container py-5">
+        <div class="card">
+            <div class="card-header">История событий</div>
+            <div class="card-body">
+                <div class="mb-3">
+                    <a href="/" class="btn btn-primary">
+                        <i class="bi bi-arrow-left me-2"></i>Назад
+                    </a>
+                </div>
+                <div class="event-list">
+                    {% for timestamp, action in events %}
+                        <div class="event-item">
+                            <i class="event-icon bi
+                                {% if 'Кормление' in action %}
+                                    bi-bowl
+                                {% elif 'Интервал' in action %}
+                                    bi-clock-history
+                                {% elif 'Ошибка' in action or 'ошибка' in action %}
+                                    bi-exclamation-triangle
+                                {% else %}
+                                    bi-info-circle
+                                {% endif %}
+                            "></i>
+                            <div>
+                                <strong>{{ timestamp }}</strong>: {{ action }}
+                            </div>
+                        </div>
+                    {% else %}
+                        <div class="event-item text-muted">
+                            <i class="event-icon bi bi-info-circle"></i>
+                            Нет событий
+                        </div>
+                    {% endfor %}
+                </div>
+            </div>
+        </div>
+    </div>
+</body>
+</html>
