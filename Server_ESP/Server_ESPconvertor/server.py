@@ -1,5 +1,5 @@
 import time
-from flask import Flask, render_template, request, session, redirect, url_for
+from flask import Flask, render_template, request, session, redirect, url_for, jsonify
 from flask_socketio import SocketIO, emit, join_room, leave_room
 from functools import wraps
 from werkzeug.security import generate_password_hash, check_password_hash
@@ -178,6 +178,24 @@ def history():
     conn.close()
     return render_template('history.html', events=events)
 
+@app.route('/history_feed_data')
+@login_required
+def history_feed_data():
+    device_id = session.get('device_id')
+    conn = sqlite3.connect(DB_PATH)
+    c = conn.cursor()
+    c.execute("""
+        SELECT strftime('%Y-%m-%d %H:00:00', timestamp) as hour, COUNT(*) as count
+        FROM events
+        WHERE device_id = ? AND action = 'Команда кормления отправлена'
+        GROUP BY hour
+        ORDER BY hour
+    """, (device_id,))
+    rows = c.fetchall()
+    conn.close()
+
+    history_for_graph = [{"timestamp": row[0], "count": row[1]} for row in rows]
+    return jsonify(history_for_graph)
 
 @socketio.on('connect')
 def handle_connect():
