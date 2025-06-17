@@ -35,6 +35,7 @@ const int servoPin = 2;  // Пин сервопривода
 const int ledPin = 2;     // Пин встроенного светодиода
 
 // Начальный Wi-Fi
+// const char* ssidAP = "AutoFeederSetup";
 const char* passwordAP = "12345678";
 
 String wifiSSID = "";
